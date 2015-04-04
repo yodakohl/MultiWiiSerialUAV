@@ -77,6 +77,13 @@ class MultiwiiSerialUAV(threading.Thread):
 	RCAUX3     = 0
 	RCAUX4     = 0
 
+	GPS_numSat        = 0
+	GPS_latitude      = 0
+	GPS_longitude     = 0
+	GPS_altitude      = 0
+	GPS_speed         = 0
+	GPS_ground_course = 0
+
 	stopSignal = False
 	ready      = False
 
