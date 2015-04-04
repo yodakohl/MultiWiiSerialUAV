@@ -1,4 +1,4 @@
-from MultiwiiSerialUAV import MultiwiiSerialUAV
+from MultiWiiSerialUAV import MultiwiiSerialUAV
 
 import sys
 import time
