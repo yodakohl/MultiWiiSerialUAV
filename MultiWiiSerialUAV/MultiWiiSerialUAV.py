@@ -41,14 +41,7 @@ class MultiwiiSerialUAV(threading.Thread):
 
 	SerialInterface  = None
 
-
-	latitude  =  0.0
-	longitude =  0.0
 	altitude  = -0
-	heading   = -0
-	timestamp = -0
-	gpsString = -0
-	numSats   = -0
 	accuracy  = -1
 	roll      =  0
 	pitch     =  0
@@ -77,6 +70,7 @@ class MultiwiiSerialUAV(threading.Thread):
 	RCAUX3     = 0
 	RCAUX4     = 0
 
+	GPS_FIX           = 0
 	GPS_numSat        = 0
 	GPS_latitude      = 0
 	GPS_longitude     = 0
@@ -86,6 +80,13 @@ class MultiwiiSerialUAV(threading.Thread):
 
 	stopSignal = False
 	ready      = False
+	armed      = False
+
+
+	interface = "/dev/ttyUSB0"
+
+	def isArmed(self):
+		return self.armed
 
 	def isReady(self):
 		return self.ready
@@ -107,21 +108,40 @@ class MultiwiiSerialUAV(threading.Thread):
 					state = 1
 		return
 
+
+
+	# MAIN LOOP
 	def run(self):
-		self.connect("/dev/ttyUSB0")
+		self.connect(self.interface)
 
 		while (self.stopSignal == False):
-			self.writeRC()
-			self.sendCommand(109)
-			self.readMessage()
+			try:
+				self.writeRC()
+				self.sendCommand(self.ALTITUDE)
+				self.sendCommand(self.RAW_GPS)
+				self.readMessage()
+			except Exception,e:
+				print("Bad: " + str(e))
+				pass
 
 		print ("UAV finished")
+
+
+	def setInterface(self,interfaceName):
+		self.interface = interfaceName
 
 	def stop(self):
 		self.stopSignal = True
 
 	def getAltitude(self):
 		return self.altitude
+
+	def getLongitude(self):
+		return self.longitude
+
+	def getLatitude(self):
+		return self.latitude
+
 
 	def readMessage(self):
 		
@@ -146,14 +166,17 @@ class MultiwiiSerialUAV(threading.Thread):
 			chksumVerify = self.getChkSum(postAmble[1] + postAmble[2] + data)#Verify Checksum
 			if( ord(chksum) == chksumVerify):
 				#pass to interpreter
-				if(cmd == 102):
+				if(cmd == self.RAW_IMU):
 					pass
-				elif (cmd == 103):
+				elif (cmd == self.SERVO):
 					pass
 				elif (cmd == self.ALTITUDE):
 					self.parseALTITUDE(data)
+				elif (cmd == self.RAW_GPS):
+					self.parseRAW_GPS(data)
 				else:
 					pass
+					#print ("Unknown Command: " + str(cmd))
 			else:
 				print ("CHKSUM failed")
 
@@ -161,8 +184,16 @@ class MultiwiiSerialUAV(threading.Thread):
 	def parseALTITUDE(self,data):
 		unpacked = struct.unpack('<ih',data)
 		self.altitude = unpacked[0]
-		#print ("Altitude: " + str(self.altitude))
-		pass
+
+	def parseRAW_GPS(self,data):
+		unpacked = struct.unpack('<bbiihhh',data)
+		GPS_FIX           = unpacked[0]
+		GPS_numSat        = unpacked[1]
+		GPS_latitude      = unpacked[2]
+		GPS_longitude     = unpacked[3]
+		GPS_altitude      = unpacked[4]
+		GPS_speed         = unpacked[5]
+		GPS_ground_course = unpacked[6]
 
 	def calibrate(self):
 		print("Calibrating")
@@ -176,15 +207,16 @@ class MultiwiiSerialUAV(threading.Thread):
 		msg = struct.pack('<3c3B','$','M','<',0,command,command)
 		self.SerialInterface.write(msg)
 		self.SerialInterface.flush()
-		pass
+		#print("sending command")
 
 	def arm(self):
 		self.setRC(1500,1500,2000,1000,0,0,0,0)
+		self.armed = True
 
 	
 	def disarm(self):
 		self.setRC(1500,1500,1000,1000,0,0,0,0)
-
+		self.armed = False
 
 	def sendDataCommand(command,data):
 		pass
