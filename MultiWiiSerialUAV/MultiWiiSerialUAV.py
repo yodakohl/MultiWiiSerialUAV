@@ -65,10 +65,10 @@ class MultiwiiSerialUAV(threading.Thread):
 	RCpitch    = 1500
 	RCyaw      = 1500
 	RCthrottle = 1000
-	RCAUX1     = 0
-	RCAUX2     = 0
-	RCAUX3     = 0
-	RCAUX4     = 0
+	RCAUX1     = 1000
+	RCAUX2     = 1000
+	RCAUX3     = 1000
+	RCAUX4     = 1000
 
 	GPS_FIX           = 0
 	GPS_numSat        = 0
@@ -81,6 +81,7 @@ class MultiwiiSerialUAV(threading.Thread):
 	stopSignal = False
 	ready      = False
 	armed      = False
+	failsafe   = False
 
 
 	interface = "/dev/ttyUSB0"
@@ -109,17 +110,16 @@ class MultiwiiSerialUAV(threading.Thread):
 		return
 
 
-
-	# MAIN LOOP
 	def run(self):
 		self.connect(self.interface)
 
 		while (self.stopSignal == False):
 			try:
 				self.writeRC()
-				self.sendCommand(self.ALTITUDE)
-				self.sendCommand(self.RAW_GPS)
 				self.readMessage()
+				self.sendCommand(self.ALTITUDE)
+				self.readMessage()
+				time.sleep(0.1)
 			except Exception,e:
 				print("Bad: " + str(e))
 				pass
@@ -142,6 +142,9 @@ class MultiwiiSerialUAV(threading.Thread):
 	def getLatitude(self):
 		return self.latitude
 
+	def failsafe(self):
+		self.failsafe = True
+
 
 	def readMessage(self):
 		
@@ -149,21 +152,12 @@ class MultiwiiSerialUAV(threading.Thread):
 		postAmble = self.SerialInterface.read(3)
 
 		if (len(postAmble) == 3):
-			if (postAmble[0] == '<'):
-				pass
-				#print ("Incoming Message")
-			else:
-				pass
-				#print ("Outgoing Message")
-
 			cmd = ord(postAmble[2])
 			size = ord(postAmble[1])
-
-			#print ("CMD: " + str(cmd))
 			data = self.SerialInterface.read(size)
 			chksum = self.SerialInterface.read(1)
 			
-			chksumVerify = self.getChkSum(postAmble[1] + postAmble[2] + data)#Verify Checksum
+			chksumVerify = self.getChkSum(postAmble[1] + postAmble[2] + data)
 			if( ord(chksum) == chksumVerify):
 				#pass to interpreter
 				if(cmd == self.RAW_IMU):
@@ -182,7 +176,7 @@ class MultiwiiSerialUAV(threading.Thread):
 
 
 	def parseALTITUDE(self,data):
-		unpacked = struct.unpack('<ih',data)
+		unpacked = struct.unpack('<i',data)
 		self.altitude = unpacked[0]
 
 	def parseRAW_GPS(self,data):
@@ -197,8 +191,8 @@ class MultiwiiSerialUAV(threading.Thread):
 
 	def calibrate(self):
 		print("Calibrating")
-		self.sendCommand(205)
-		self.sendCommand(206)
+		self.sendCommand(self.ACC_CALIBRATION)
+		self.sendCommand(self.MAG_CALIBRATION)
 		time.sleep(12)
 		self.ready = True
 		print("Calibrating finished")
@@ -207,15 +201,13 @@ class MultiwiiSerialUAV(threading.Thread):
 		msg = struct.pack('<3c3B','$','M','<',0,command,command)
 		self.SerialInterface.write(msg)
 		self.SerialInterface.flush()
-		#print("sending command")
 
 	def arm(self):
-		self.setRC(1500,1500,2000,1000,0,0,0,0)
+		self.setRC(1500,1500,2000,1000,self.RCAUX1,self.RCAUX2,self.RCAUX3,self.RCAUX4)
 		self.armed = True
 
-	
 	def disarm(self):
-		self.setRC(1500,1500,1000,1000,0,0,0,0)
+		self.setRC(1500,1500,1000,1000,self.RCAUX1,self.RCAUX2,self.RCAUX3,self.RCAUX4)
 		self.armed = False
 
 	def sendDataCommand(command,data):
@@ -232,10 +224,13 @@ class MultiwiiSerialUAV(threading.Thread):
 		self.RCAUX4       = Laux4
 
 	def writeRC(self):
-		self.MSP_SET_RAW_RC(self.RCroll,self.RCpitch,self.RCyaw,self.RCthrottle, self.RCAUX1,self.RCAUX2,self.RCAUX3,self.RCAUX4)
+		if (self.failsafe == False):
+			self.MSP_SET_RAW_RC(self.RCroll,self.RCpitch,self.RCyaw,self.RCthrottle, self.RCAUX1,self.RCAUX2,self.RCAUX3,self.RCAUX4)
+		else:
+			self.MSP_SET_RAW_RC(1500,1500,1500,1300, 1000,1000,1000,1000)
+
 
 	def MSP_SET_RAW_RC(self,Lroll,Lpitch,Lyaw,Lthrottle,Laux1,Laux2,Laux3,Laux4):
-
 		self.SerialInterface.write(struct.pack('<3c','$','M','<'))
 		restByte= struct.pack('<2B8H',16,200, Lroll,Lpitch,Lyaw,Lthrottle,Laux1,Laux2,Laux3,Laux4)
 		self.SerialInterface.write(restByte)
