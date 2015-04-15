@@ -3,6 +3,13 @@ import serial
 import threading
 import time
 
+#If Copter is manually controlled and no heartbeat is send within 2 seconds
+#the failsafe routine is executed
+
+#On low battery the failsafe is executed
+
+
+
 class MultiwiiSerialUAV(threading.Thread):
 	IDENT            = 100
 	STATUS           = 101
@@ -83,6 +90,7 @@ class MultiwiiSerialUAV(threading.Thread):
 	armed      = False
 	failsafe   = False
 
+	lastHeartbeat = None
 
 	interface = "/dev/ttyUSB0"
 
@@ -91,6 +99,12 @@ class MultiwiiSerialUAV(threading.Thread):
 
 	def isReady(self):
 		return self.ready
+
+
+	#if no heartbeat is sent each second, the failsafe will be triggered
+	def heartbeat(self):
+		self.lastHeartbeat = time.time()
+
 
 	def readPreamble(self):
 		state = 1
@@ -120,6 +134,10 @@ class MultiwiiSerialUAV(threading.Thread):
 				self.sendCommand(self.ALTITUDE)
 				self.readMessage()
 				time.sleep(0.1)
+
+				if((lastHeartbeat!=None) and( time.time() > lastHeartbeat +1)):
+					self.setFailsafe()
+
 			except Exception,e:
 				print("Bad: " + str(e))
 				pass
@@ -142,7 +160,8 @@ class MultiwiiSerialUAV(threading.Thread):
 	def getLatitude(self):
 		return self.latitude
 
-	def failsafe(self):
+	def setFailsafe(self):
+		print("FAILSAFE")
 		self.failsafe = True
 
 
@@ -159,7 +178,7 @@ class MultiwiiSerialUAV(threading.Thread):
 			
 			chksumVerify = self.getChkSum(postAmble[1] + postAmble[2] + data)
 			if( ord(chksum) == chksumVerify):
-				#pass to interpreter
+
 				if(cmd == self.RAW_IMU):
 					pass
 				elif (cmd == self.SERVO):
@@ -176,7 +195,7 @@ class MultiwiiSerialUAV(threading.Thread):
 
 
 	def parseALTITUDE(self,data):
-		unpacked = struct.unpack('<i',data)
+		unpacked = struct.unpack('<ih',data)
 		self.altitude = unpacked[0]
 
 	def parseRAW_GPS(self,data):
@@ -223,11 +242,12 @@ class MultiwiiSerialUAV(threading.Thread):
 		self.RCAUX3       = Laux3
 		self.RCAUX4       = Laux4
 
+
 	def writeRC(self):
 		if (self.failsafe == False):
 			self.MSP_SET_RAW_RC(self.RCroll,self.RCpitch,self.RCyaw,self.RCthrottle, self.RCAUX1,self.RCAUX2,self.RCAUX3,self.RCAUX4)
 		else:
-			self.MSP_SET_RAW_RC(1500,1500,1500,1300, 1000,1000,1000,1000)
+			self.MSP_SET_RAW_RC(1500,1500,1500,1350, 1000,1000,1000,1000)
 
 
 	def MSP_SET_RAW_RC(self,Lroll,Lpitch,Lyaw,Lthrottle,Laux1,Laux2,Laux3,Laux4):
