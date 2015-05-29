@@ -91,6 +91,7 @@ class MultiwiiSerialUAV(threading.Thread):
 	failsafe   = False
 
 	lastHeartbeat = None
+	heartbeatEnabled = False
 
 	interface = "/dev/ttyUSB0"
 
@@ -100,6 +101,8 @@ class MultiwiiSerialUAV(threading.Thread):
 	def isReady(self):
 		return self.ready
 
+	def enableHeartbeat(yesno):
+		self.heartbeatEnabled = yesno
 
 	#if no heartbeat is sent each second, the failsafe will be triggered
 	def heartbeat(self):
@@ -130,17 +133,16 @@ class MultiwiiSerialUAV(threading.Thread):
 		while (self.stopSignal == False):
 			try:
 				self.writeRC()
-				self.readMessage()
-				self.sendCommand(self.ALTITUDE)
-				self.readMessage()
+				#self.readMessage()
+				#self.sendCommand(self.ALTITUDE)
+				#self.readMessage()
 				time.sleep(0.1)
 
-				if((lastHeartbeat!=None) and( time.time() > lastHeartbeat +1)):
+				if(self.heartbeatEnabled and (self.lastHeartbeat!=None) and (time.time() > lastHeartbeat +1)):
 					self.setFailsafe()
 
 			except Exception,e:
 				print("Bad: " + str(e))
-				pass
 
 		print ("UAV finished")
 
@@ -163,7 +165,6 @@ class MultiwiiSerialUAV(threading.Thread):
 	def setFailsafe(self):
 		print("FAILSAFE")
 		self.failsafe = True
-
 
 	def readMessage(self):
 		
@@ -266,23 +267,23 @@ class MultiwiiSerialUAV(threading.Thread):
 
 
 	def connect(self,interface):
-		self.SerialInterface=serial.Serial()
-		self.SerialInterface.port=interface
-		self.SerialInterface.baudrate=115200
-		self.SerialInterface.parity=serial.PARITY_NONE
-		self.SerialInterface.bytesize=serial.EIGHTBITS
-		self.SerialInterface.stopbits=serial.STOPBITS_ONE
-		self.SerialInterface.xonxoff=False
-		self.SerialInterface.rtscts=False
-		self.SerialInterface.dsrdtr=False
-		self.SerialInterface.writeTimeout=2
-		self.SerialInterface.readTimeout=2
+		self.SerialInterface              = serial.Serial()
+		self.SerialInterface.port         = interface
+		self.SerialInterface.baudrate     = 115200
+		self.SerialInterface.parity       = serial.PARITY_NONE
+		self.SerialInterface.bytesize     = serial.EIGHTBITS
+		self.SerialInterface.stopbits     = serial.STOPBITS_ONE
+		self.SerialInterface.xonxoff      = False
+		self.SerialInterface.rtscts       = False
+		self.SerialInterface.dsrdtr       = False
+		self.SerialInterface.writeTimeout = 2
+		self.SerialInterface.readTimeout  = 2
 
 		try:
 			self.SerialInterface.open()
 
 		except Exception,e:
-			print("Could not open serial interface: "+str(e))
+			print("Could not open serial interface: " + str(e))
 			exit()
 
 		self.SerialInterface.flushInput()
@@ -291,12 +292,6 @@ class MultiwiiSerialUAV(threading.Thread):
 		time.sleep(10)
 		self.calibrate()
 		print("SerialInterface opened")
-
-
-
-
-
-
 
 
 
