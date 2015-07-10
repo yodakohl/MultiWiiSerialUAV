@@ -18,15 +18,16 @@ def main():
 		UAV.arm()
 		time.sleep(4)
 		print("Armed, running Idle")
-		UAV.setRC(1500,1500,1500,1650,0,0,0,0)
+		UAV.setRC(1500,1500,1500,1550,0,0,0,0)
 
 		while True:
-			if (UAV.getAltitude() > 90):
-				UAV.setRC(1500,1500,1500,1000,2000,0,0,0)
-				pass
-			elif(UAV.getAltitude() <50):
+			#if (UAV.getAltitude() > 90):
+			#	UAV.setRC(1500,1500,1500,1000,2000,0,0,0)
+			#	pass
+			#elif(UAV.getAltitude() <50):
 				#UAV.setRC(1500,1500,1500,1400,1000,0,0,0)
-				pass
+			#	pass
+			UAV.setRC(1500,1500,1500,1550,0,0,0,0)
 			time.sleep(0.1)
 
 	except (KeyboardInterrupt, SystemExit):

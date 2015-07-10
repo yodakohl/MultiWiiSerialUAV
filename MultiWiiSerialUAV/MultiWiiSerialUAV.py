@@ -138,11 +138,12 @@ class MultiwiiSerialUAV(threading.Thread):
 				#self.readMessage()
 				time.sleep(0.1)
 
-				if(self.heartbeatEnabled and (self.lastHeartbeat!=None) and (time.time() > lastHeartbeat +1)):
+				if(self.heartbeatEnabled and (self.lastHeartbeat!=None) and (time.time() > self.lastHeartbeat +1)):
 					self.setFailsafe()
 
 			except Exception,e:
 				print("Bad: " + str(e))
+				self.disarm()
 
 		print ("UAV finished")
 
@@ -165,6 +166,7 @@ class MultiwiiSerialUAV(threading.Thread):
 	def setFailsafe(self):
 		print("FAILSAFE")
 		self.failsafe = True
+		self.disarm()
 
 	def readMessage(self):
 		
@@ -248,8 +250,7 @@ class MultiwiiSerialUAV(threading.Thread):
 		if (self.failsafe == False):
 			self.MSP_SET_RAW_RC(self.RCroll,self.RCpitch,self.RCyaw,self.RCthrottle, self.RCAUX1,self.RCAUX2,self.RCAUX3,self.RCAUX4)
 		else:
-			self.MSP_SET_RAW_RC(1500,1500,1500,1350, 1000,1000,1000,1000)
-
+			self.MSP_SET_RAW_RC(1500,1500,1000,1000, 1000,1000,1000,1000)
 
 	def MSP_SET_RAW_RC(self,Lroll,Lpitch,Lyaw,Lthrottle,Laux1,Laux2,Laux3,Laux4):
 		self.SerialInterface.write(struct.pack('<3c','$','M','<'))

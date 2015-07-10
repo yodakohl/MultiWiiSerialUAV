@@ -7,7 +7,7 @@ from kivy.app import App
 from kivy.uix.button import Button
 from kivy.uix.widget import Widget
 from kivy.core.window import Window
-from MultiwiiSerialUAV import MultiwiiSerialUAV
+from MultiWiiSerialUAV import MultiwiiSerialUAV
 
 
 class Remote(Widget):
@@ -24,6 +24,7 @@ class Remote(Widget):
 		self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
 		self._keyboard.bind(on_key_down=self._on_keyboard_down)
 		self._keyboard.bind(on_key_up=self._on_keyboard_up)
+		self.UAV.start()
 
 	def _keyboard_closed(self):
 		self._keyboard.unbind(on_key_down=self._on_keyboard_down)
@@ -40,6 +41,7 @@ class Remote(Widget):
 		self.UAV.disarm()
 
 	def _setRC(self):
+		#print("Throttle: " + str(self.throttle))
 		self.UAV.setRC(self.roll,self.pitch,self.yaw,self.throttle,0,2000,0,0)
 
 	def _throttleUp(self):
@@ -57,12 +59,15 @@ class Remote(Widget):
 
 	def _start(self):
 		print("Starting UAV")
-		self.UAV.start()
+		
 		while self.UAV.isReady() == False:
 			time.sleep(1)
+
+		#time.sleep(10)
 		print("Arming")
 		self.UAV.arm()
 		time.sleep(4)
+		self.UAV.setRC(self.roll,self.pitch,self.yaw,self.throttle,0,2000,0,0)
 		print("Armed, running Idle")
 
 	def _moveLeft(self):
@@ -81,10 +86,11 @@ class Remote(Widget):
 
 	def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
 		if keycode[1] == 'v':
-			print("W")
+			print("throttle:" + str(self.throttle))
 			self._throttleUp()
 		elif keycode[1] == 'i':
 			self._throttleDown()
+			print("throttle:" + str(self.throttle) )
 		elif keycode[1] == 'up':
 			self.pitch = 1650
 			self._setRC()
